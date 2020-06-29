@@ -1,11 +1,9 @@
-import base64
 import json
 from os import environ
 
 import boto3
 import requests
 from urllib.parse import urlparse
-from io import BytesIO
 
 from elasticsearch import Elasticsearch, RequestsHttpConnection
 from requests_aws4auth import AWS4Auth
@@ -19,7 +17,7 @@ def get_features(sm_runtime_client, sagemaker_endpoint, payload):
     response = sm_runtime_client.invoke_endpoint(
         EndpointName=sagemaker_endpoint,
         ContentType='text/plain',
-        Body=paylaod)
+        Body=payload)
     response_body = json.loads((response['Body'].read()))
     features = response_body['predictions'][0]
 
@@ -32,7 +30,7 @@ def get_neighbors(features, es, k_neighbors=3):
         request_timeout=30, index=idx_name,
         body={
             'size': k_neighbors,
-            'query': {'knn': {'zalando_img_vector': {'vector': features, 'k': k_neighbors}}}}
+            'query': {'knn': {'zalando_nlu_vector': {'vector': features, 'k': k_neighbors}}}}
         )
     s3_uris = [res['hits']['hits'][x]['_source']['image'] for x in range(k_neighbors)]
 
@@ -49,15 +47,6 @@ def generate_presigned_urls(s3_uris):
     ) for x in s3_uris]
 
     return presigned_urls
-
-
-def download_file(url):
-    r = requests.get(url)
-    if r.status_code == 200:
-        file = BytesIO(r.content)
-    else:
-        print("file failed to download")
-    return file
 
 
 def lambda_handler(event, context):

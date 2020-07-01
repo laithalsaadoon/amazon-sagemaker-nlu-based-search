@@ -19,7 +19,7 @@ def get_features(sm_runtime_client, sagemaker_endpoint, payload):
         ContentType='text/plain',
         Body=payload)
     response_body = json.loads((response['Body'].read()))
-    features = response_body['predictions'][0]
+    features = response_body
 
     return features
 

@@ -2,12 +2,18 @@ AWSTemplateFormatVersion: 2010-09-09
 Description: Template to start the nlu search blog
 
 Resources: 
+  CodeRepository:
+    Type: AWS::SageMaker::CodeRepository
+    Properties:
+      GitConfig:
+          RepositoryUrl: https://github.com/aws-samples/amazon-sagemaker-nlu-search
+
   NotebookInstance:
     Type: AWS::SageMaker::NotebookInstance
     Properties:
       InstanceType: ml.t3.medium
       RoleArn: !GetAtt Role.Arn
-      DefaultCodeRepository: https://github.com/aws-samples/amazon-sagemaker-nlu-search
+      DefaultCodeRepository: !GetAtt CodeRepository.CodeRepositoryName
 
   Role:
     Type: AWS::IAM::Role

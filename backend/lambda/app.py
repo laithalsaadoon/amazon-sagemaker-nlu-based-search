@@ -2,7 +2,6 @@ import json
 from os import environ
 
 import boto3
-import requests
 from urllib.parse import urlparse
 
 from elasticsearch import Elasticsearch, RequestsHttpConnection
@@ -35,6 +34,34 @@ def get_neighbors(features, es, k_neighbors=3):
     s3_uris = [res['hits']['hits'][x]['_source']['image'] for x in range(k_neighbors)]
 
     return s3_uris
+
+
+def es_match_query(payload, es, k=3):
+    idx_name = 'idx_zalando'
+    search_body = {
+        "_source": {
+            "excludes": ["zalando_nlu_vector"]
+        },
+        "highlight": {
+            "fields": {
+                "description": {}
+            }
+        },
+        "query": {
+            "match": {
+                "description": {
+                    "query": payload
+                }
+            }
+        }
+    }
+
+    search_response = es.search(request_timeout=30, index=idx_name,
+                                body=search_body)['hits']['hits'][:k]
+
+    response = [{'image': x['_source']['image'], 'description': x['highlight']['description']} for x in search_response]
+
+    return response
 
 
 def generate_presigned_urls(s3_uris):
@@ -81,18 +108,34 @@ def lambda_handler(event, context):
     k = api_payload['k']
     payload = api_payload['searchString']
 
-    features = get_features(sm_runtime_client, sagemaker_endpoint, payload)
-    s3_uris_neighbors = get_neighbors(features, es, k_neighbors=k)
-    s3_presigned_urls = generate_presigned_urls(s3_uris_neighbors)
+    if event['path'] == '/postText':
+        features = get_features(sm_runtime_client, sagemaker_endpoint, payload)
+        s3_uris_neighbors = get_neighbors(features, es, k_neighbors=k)
+        s3_presigned_urls = generate_presigned_urls(s3_uris_neighbors)
+        return {
+            "statusCode": 200,
+            "headers": {
+                "Access-Control-Allow-Origin":  "*",
+                "Access-Control-Allow-Headers": "*",
+                "Access-Control-Allow-Methods": "*"
+            },
+            "body": json.dumps({
+                "images": s3_presigned_urls,
+            }),
+        }
+    else:
+        search = es_match_query(payload, es, k)
 
-    return {
-        "statusCode": 200,
-        "headers": {
-            "Access-Control-Allow-Origin":  "*",
-            "Access-Control-Allow-Headers": "*",
-            "Access-Control-Allow-Methods": "*"
-        },
-        "body": json.dumps({
-            "images": s3_presigned_urls,
-        }),
-    }
+        for i in range(len(search)):
+            search[i]['presigned_url'] = generate_presigned_urls([search[i]['image']])[0]
+            search[i]['description'] = " ".join(search[i]['description'])
+            search[i]['description'] = search[i]['description'].replace("<em>",'<em style="background-color:#f18973;">')
+        return {
+            "statusCode": 200,
+            "headers": {
+                "Access-Control-Allow-Origin":  "*",
+                "Access-Control-Allow-Headers": "*",
+                "Access-Control-Allow-Methods": "*"
+            },
+            "body": json.dumps(search),
+        }

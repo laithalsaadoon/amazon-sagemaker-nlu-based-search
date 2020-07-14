@@ -9,6 +9,7 @@ import Paper from '@material-ui/core/Paper';
 import Grid from '@material-ui/core/Grid';
 import GridList from '@material-ui/core/GridList';
 import GridListTile from '@material-ui/core/GridListTile';
+import GridListTileBar from '@material-ui/core/GridListTileBar';
 import LinearProgress from '@material-ui/core/LinearProgress';
 import Typography from '@material-ui/core/Typography';
 import Amplify, { API } from "aws-amplify";
@@ -37,6 +38,14 @@ const styles = theme => ({
     height: "100%",
     color: theme.palette.text.secondary
   },
+  paper2: {
+    padding: theme.spacing(2),
+    textAlign: 'center',
+    color: theme.palette.text.secondary
+  },
+  em: {
+    backgroundColor: "#f18973"
+  }
 });
 
 const BorderLinearProgress = withStyles({
@@ -58,6 +67,7 @@ class App extends React.Component {
     super(props);
     this.state = {
       pictures: [],
+      results: [],
       completed:0,
       k:3
     };
@@ -72,12 +82,14 @@ class App extends React.Component {
     console.log(this.state.searchText);
     if (this.state.searchText === undefined || this.state.searchText === "") {
       console.log("Empty Text field");
-      this.setState({pictures: [], completed:0});
+      this.setState({pictures: [], completed: 0, results: []});
     } else {
       const myInit = {
         body: {"searchString": this.state.searchText, "k": this.state.k}
       };
+
       this.setState({completed:66});
+
       API.post('NluSearch', '/postText', myInit)
       .then(response => {
         this.setState({pictures: response.images.map(function(elem) {
@@ -87,12 +99,34 @@ class App extends React.Component {
           return picture;
         })
       }); 
-      this.setState({completed:100});
       console.log(this.state.pictures);
       })
       .catch(error => {
         console.log(error);
       });
+
+      this.setState({completed:85});
+
+      console.log(this.state.results);
+      API.post('NluSearch', '/postMatch', myInit)
+      .then(response => {
+        // this.setState({results: []});
+        this.setState({results: response.map(function(elem) {
+          let result = {};
+          result.img = elem.presigned_url;
+          result.cols = 1;
+          result.description = elem.description;
+          return result;
+        })
+      }); 
+      console.log(this.state.results);
+      this.setState({completed:100});
+      })
+      .catch(error => {
+        console.log(error);
+      });
+
+      
     };
     event.preventDefault();
   }
@@ -107,14 +141,15 @@ class App extends React.Component {
 
   render() {
     const { classes } = this.props;
+    const createMarkup = htmlString => ({ __html: htmlString });
 
     return (
       <div className={classes.root}>
 
-        <Grid container justify='center' alignItems="stretch" spacing={8}>
-          <Grid item xs={10}>
+        <Grid container justify='center' alignItems="stretch" spacing={8} xs={12}>
+          {/* <Grid item xs={10}>
             <img src={require('./images/header.jpg')} alt="Header" style={{height:"100%", width: "100%"}}/>
-          </Grid>
+          </Grid> */}
           <Grid item xs={10}>
             <Typography variant="h2" style={{textAlign: "center"}}>
               AWS Natural Language Search
@@ -122,7 +157,7 @@ class App extends React.Component {
           </Grid>
           <Grid item xs={10}>
             <Paper className={classes.paper}>
-              Step 1: Select the number of similar images (K neighbors):
+              <Typography variant="h5">Step 1: Select the number of similar images (K neighbors):</Typography>
               <p/>
               <FormControl className={classes.formControl}>
                 <Select
@@ -142,8 +177,8 @@ class App extends React.Component {
 
           <Grid item xs={10}>
             <Paper className={classes.paper}>
-              Step 2:<p/>
-              Enter a natural language search query about dresses. Try entering "summery yellow dress": <p/>
+            <Typography variant="h5">Step 2: Enter a natural language search query about dresses. Try entering "summery yellow dress": </Typography>
+            <p/>
               <form noValidate autoComplete="off" onSubmit={this.handleSearchSubmit}>
                 <Input
                   style={{width:'80%'}}
@@ -172,29 +207,43 @@ class App extends React.Component {
 
           
           <Grid item xs={10}>
-              <Paper className={classes.paper}>
-                Step 3: Results!<p/>
-                <BorderLinearProgress
-                    variant="determinate"
-                    color="secondary"
-                    value={this.state.completed}
-                />
+              <Paper className={classes.paper2}>
+                <Typography variant="h5">Step 3: Results!</Typography>
                 <p/>
-                <GridList cellHeight={200} className={classes.gridList} cols={3}>
+                  <BorderLinearProgress
+                      variant="determinate"
+                      color="secondary"
+                      value={this.state.completed}
+                  />
+                <p/>
+              </Paper>
+              <p/>
+              <Paper className={classes.paper2}>
+                <Typography variant="h6">KNN Search</Typography>
+                <GridList cellHeight="auto" cols={3}>
                   {this.state.pictures.map((tile) => (
                     <GridListTile key={tile.img} cols={tile.cols || 1}>
-                      <img src={tile.img} alt="Similar photos..." style={{height:"100%", width: "auto"}} />
+                      <img src={tile.img} alt="Similar products..." style={{height:"200px", width: "auto"}} />
                     </GridListTile>
                   ))}
                 </GridList>
               </Paper>
+              <p/>
+              <Paper className={classes.paper2}>
+                <Typography variant="h6">Elasticsearch <span style={{ backgroundColor:"#f18973"}} >Match</span> Search</Typography>
+                  <GridList cellHeight={450} cols={3}>
+                    {this.state.results.map((tile) => (
+                      <Grid item xs={4}>
+                        <img src={tile.img} alt="Similar products..." style={{height:"200px", width: "auto"}} />
+                        <Typography>
+                          <p dangerouslySetInnerHTML={createMarkup(tile.description)} />
+                        </Typography>
+                      </Grid>
+                    ))}
+                  </GridList>
+              </Paper>
             </Grid>
         </Grid>
-
-        <Grid container justify="center">
-          
-        </Grid>
-
       </div>
   );}
 }

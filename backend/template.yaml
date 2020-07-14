@@ -27,7 +27,7 @@ Resources:
   PostGetSimilarTextFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://aws-sam-cli-managed-default-samclisourcebucket-wc18fewfqftg/lambda-zip/2370bf9cfedec5069c95ba98a9db61f2
+      CodeUri: s3://aws-ml-blog/artifacts/nlu-search/lambda.zip
       Handler: app.lambda_handler
       Runtime: python3.7
       Environment:
@@ -62,6 +62,11 @@ Resources:
           Properties:
             Path: /postText
             Method: post
+        PostMatch:
+          Type: Api
+          Properties:
+            Method: post
+            Path: /postMatch
 Outputs:
   TextSimilarityApi:
     Description: API Gateway endpoint URL for Prod stage for GetSimilarText function

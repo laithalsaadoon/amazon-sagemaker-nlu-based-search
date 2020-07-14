@@ -27,7 +27,7 @@ Resources:
   PostGetSimilarTextFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: s3://aws-sam-cli-managed-default-samclisourcebucket-wc18fewfqftg/lambda-zip/c09824e73210827e2243d4b37e938448
+      CodeUri: s3://aws-ml-blog/artifacts/nlu-search/lambda.zip
       Handler: app.lambda_handler
       Runtime: python3.7
       Environment:
